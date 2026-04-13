@@ -14,9 +14,18 @@ guardias = {
     }
 }
 
-# Contadores simulados
+# Contadores (simulados)
 guardias_acumuladas = {}
 guardias_semana = {}
+
+# Profesores con estado de presencia (simulados)
+profesores = [
+    {"nombre": "Ana", "presente": False},
+    {"nombre": "Luis", "presente": False},
+    {"nombre": "Marta", "presente": False},
+    {"nombre": "Carlos", "presente": False},
+    {"nombre": "Elena", "presente": False},
+]
 
 @app.route("/")
 def index():
@@ -39,8 +48,19 @@ def registrar_guardia():
 
 @app.route("/presencia")
 def vista_presencia():
-    return render_template("presencia.html")
+    return render_template("presencia.html", profesores=profesores)
 
+# Toggle presencia (simula RFID / huella / etc.)
+@app.route("/toggle_presencia", methods=["POST"])
+def toggle_presencia():
+    nombre = request.form["nombre"]
+
+    for p in profesores:
+        if p["nombre"] == nombre:
+            p["presente"] = not p["presente"]  # cambia estado
+            break
+
+    return redirect(url_for("vista_presencia"))
 
 if __name__ == "__main__":
     app.run(debug=True)

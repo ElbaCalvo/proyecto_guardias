@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Presencia</title>
+    <title>Control de presencia</title>
 </head>
+
 <body>
-    <h1>Control de Presencia</h1>
-    <p>Será la interfaz del control de presencia.</p>
-    <a href="/">Volver</a>
+
+<h1>Control de presencia</h1>
+
+{% for p in profesores %}
+
+    <form method="POST" action="/toggle_presencia">
+        <input type="hidden" name="nombre" value="{{ p.nombre }}">
+
+        <button type="submit">
+            {{ p.nombre }}
+
+            {% if p.presente %}
+                - PRESENTE
+            {% else %}
+                - AUSENTE
+            {% endif %}
+        </button>
+    </form>
+
+    <br>
+
+{% endfor %}
+
+<br>
+<a href="/">Volver</a>
+
 </body>
 </html>
