@@ -10,21 +10,25 @@
 
 {% for p in profesores %}
 
-    <form method="POST" action="/toggle_presencia">
-        <input type="hidden" name="nombre" value="{{ p.nombre }}">
+<form method="POST" action="/toggle_presencia">
 
-        <button type="submit">
-            {{ p.nombre }}
+    <input type="hidden" name="profesor_id" value="{{ p[0] }}">
 
-            {% if p.presente %}
-                - PRESENTE
-            {% else %}
-                - AUSENTE
-            {% endif %}
-        </button>
-    </form>
+    <button type="submit">
 
-    <br>
+        {{ p[1] }}
+
+        {% if p[2] == 'presente' %}
+            - PRESENTE
+        {% else %}
+            - AUSENTE
+        {% endif %}
+
+    </button>
+
+</form>
+
+<br>
 
 {% endfor %}
 
