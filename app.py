@@ -14,35 +14,41 @@ def vista_guardias():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id_horario, hora, aula, id_profesor FROM horario")
+    cursor.execute("""
+        SELECT 
+            a.hora,
+            h.aula,
+            p.id_profesor,
+            p.nombre
+        FROM ausencias a
+        JOIN profesores p ON a.id_profesor = p.id_profesor
+        JOIN horario h 
+            ON a.id_profesor = h.id_profesor 
+            AND a.hora = h.hora
+        WHERE a.fecha = date('now')
+    """)
     filas = cursor.fetchall()
 
     cursor.execute("SELECT id_profesor, nombre FROM profesores")
     profesores = cursor.fetchall()
 
-    cursor.execute("SELECT id_profesor_ausente, id_profesor_cubre, hora, aula FROM guardias WHERE fecha = date('now')")
-    guardias_db = cursor.fetchall()
-    asignadas = {(g[2], g[3]): {'ausente': g[0], 'cubre': g[1]} for g in guardias_db}
-
     cursor.execute("""
-        SELECT a.hora, h.aula, p.id_profesor, p.nombre
-        FROM ausencias a
-        JOIN profesores p ON a.id_profesor = p.id_profesor
-        JOIN horario h ON a.id_profesor = h.id_profesor AND a.hora = h.hora
-        WHERE a.fecha = date('now')
+        SELECT id_profesor_ausente, id_profesor_cubre, hora, aula 
+        FROM guardias 
+        WHERE fecha = date('now')
     """)
-    ausencias_db = cursor.fetchall()
-    
-    mapa_ausentes = {}
-    for a in ausencias_db:
-        mapa_ausentes[(a[0], a[1])] = {'id': a[2], 'nombre': a[3]}
+    guardias_db = cursor.fetchall()
+
+    asignadas = {
+        (g[2], g[3]): {'ausente': g[0], 'cubre': g[1]}
+        for g in guardias_db
+    }
 
     conn.close()
 
     return render_template(
         "guardias.html",
         filas=filas,
-        mapa_ausentes=mapa_ausentes,
         asignadas=asignadas,
         profesores=profesores,
         fecha_actual=date.today().isoformat()
@@ -72,7 +78,6 @@ def registrar_guardia():
     aula = request.form["aula"]
     fecha = request.form["fecha"]
 
-    # Llamamos a tu motor con los nuevos parámetros
     resultado = procesar_guardia(id_ausente, id_cubre, fecha, hora, aula)
     
     return redirect(url_for("vista_guardias"))
@@ -82,7 +87,6 @@ def vista_presencia():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Ajustado a id_profesor
     cursor.execute("""
         SELECT 
             p.id_profesor,
@@ -106,17 +110,41 @@ def toggle_presencia():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id_presencia FROM presencia
+        SELECT 1 FROM presencia
         WHERE id_profesor = ? AND fecha = ?
     """, (profesor_id, fecha))
+
     existe = cursor.fetchone()
 
     if existe:
-        cursor.execute("DELETE FROM presencia WHERE id_profesor = ? AND fecha = ?", (profesor_id, fecha))
+        cursor.execute("""
+            DELETE FROM presencia
+            WHERE id_profesor = ? AND fecha = ?
+        """, (profesor_id, fecha))
+
+        cursor.execute("""
+            SELECT hora
+            FROM horario
+            WHERE id_profesor = ?
+        """, (profesor_id,))
+
+        horas = cursor.fetchall()
+
+        for h in horas:
+            cursor.execute("""
+                INSERT INTO ausencias (id_profesor, fecha, hora)
+                VALUES (?, ?, ?)
+            """, (profesor_id, fecha, h[0]))
+
     else:
         cursor.execute("""
-            INSERT INTO presencia (id_profesor, fecha, hora, presente) 
-            VALUES (?, ?, 0, 1)
+            INSERT INTO presencia (id_profesor, fecha, presente)
+            VALUES (?, ?, 1)
+        """, (profesor_id, fecha))
+
+        cursor.execute("""
+            DELETE FROM ausencias
+            WHERE id_profesor = ? AND fecha = ?
         """, (profesor_id, fecha))
 
     conn.commit()

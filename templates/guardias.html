@@ -15,17 +15,17 @@
     <tr>
         <th>Hora</th>
         <th>Aula</th>
-        <th>Profesor/a ausente</th>
+        <th>Profesor ausente</th>
         <th>Profesor/a disponible</th>
         <th>Acción</th>
     </tr>
 
     {% for f in filas %}
-    {% set hora = f[0] %}
-    {% set aula = f[1] %}
+    {% set hora = f[1] %}
+    {% set aula = f[2] %}
 
     <tr class="{% if (hora, aula) in asignadas %}asignada{% endif %}">
-        <td>{{ hora }}</td>
+        <td>{{ hora }}ª</td>
         <td>{{ aula }}</td>
 
         <td>{{ mapa_ausentes.get((hora, aula), {}).get('nombre', 'Sin clase') }}</td>

@@ -11,7 +11,15 @@ cursor = conn.cursor()
 
 conn.commit()
 
+cursor.execute("SELECT * FROM profesores")
+print(cursor.fetchall())
+
 cursor.execute("SELECT * FROM horario")
 print(cursor.fetchall())
 
+cursor.execute("SELECT * FROM presencia")
+print(cursor.fetchall())
+
+cursor.execute("SELECT * FROM ausencias")
+print(cursor.fetchall())
 conn.close()
