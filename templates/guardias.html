@@ -2,91 +2,64 @@
 <html>
 <head>
     <title>Guardias</title>
-
     <style>
-        .asignada {
-            background-color: #d4edda;
-        }
+        .asignada { background-color: #d4edda; }
+        .fila-tabla { padding: 10px; }
     </style>
 </head>
-
 <body>
 
 <h1>Gestión de Guardias</h1>
 
 <table border="1" cellpadding="10">
+    <tr>
+        <th>Hora</th>
+        <th>Aula</th>
+        <th>Profesor/a ausente</th>
+        <th>Profesor/a disponible</th>
+        <th>Acción</th>
+    </tr>
 
-<tr>
-    <th>Hora</th>
-    <th>Aula</th>
-    <th>Profesor</th>
-    <th>Acción</th>
-</tr>
+    {% for f in filas %}
+    {% set hora = f[0] %}
+    {% set aula = f[1] %}
 
-{% for hora, aula in filas %}
+    <tr class="{% if (hora, aula) in asignadas %}asignada{% endif %}">
+        <td>{{ hora }}</td>
+        <td>{{ aula }}</td>
 
-<tr class="{% if (hora, aula) in asignadas %}asignada{% endif %}">
+        <td>{{ mapa_ausentes.get((hora, aula), {}).get('nombre', 'Sin clase') }}</td>
+        
+        <td>
+            <select name="id_profesor_cubre" form="form_asignar_{{ loop.index }}" required>
+                {% for p in profesores %}
+                    <option value="{{ p[0] }}">{{ p[1] }}</option>
+                {% endfor %}
+            </select>
+        </td>
 
-    <!-- HORA -->
-    <td>{{ hora }}</td>
-
-    <!-- AULA -->
-    <td>{{ aula }}</td>
-
-    <!-- PROFESOR -->
-    <td>
-
-        {% if (hora, aula) in asignadas %}
-
-            {% set prof_id = asignadas[(hora, aula)] %}
-
-            {% for p in profesores %}
-                {% if p[0] == prof_id %}
-                    {{ p[1] }}
-                {% endif %}
-            {% endfor %}
-
-        {% else %}
-
-            <form method="POST" action="/registrar">
-
-                <input type="hidden" name="hora" value="{{ hora }}">
-                <input type="hidden" name="aula" value="{{ aula }}">
-
-                <select name="profesor_id">
-                    {% for p in profesores %}
-                        <option value="{{ p[0] }}">{{ p[1] }}</option>
-                    {% endfor %}
-                </select>
-
-        {% endif %}
-
-    </td>
-
-    <!-- ACCIÓN -->
-    <td>
-
-        {% if (hora, aula) in asignadas %}
-
-            <form method="POST" action="/eliminar">
-                <input type="hidden" name="hora" value="{{ hora }}">
-                <input type="hidden" name="aula" value="{{ aula }}">
-                <button type="submit">Editar</button>
-            </form>
-
-        {% else %}
-
-            <button type="submit">Asignar</button>
-            </form>
-
-        {% endif %}
-
-    </td>
-
-</tr>
-
-{% endfor %}
-
+        <td>
+            {% if (hora, aula) in asignadas %}
+                Cubierta por: <strong>{{ asignadas[(hora, aula)].cubre }}</strong>
+                <form method="POST" action="/eliminar" style="display:inline;">
+                    <input type="hidden" name="hora" value="{{ hora }}">
+                    <input type="hidden" name="aula" value="{{ aula }}">
+                    <button type="submit">Eliminar</button>
+                </form>
+            {% else %}
+                <form id="form_asignar_{{ loop.index }}" method="POST" action="/registrar">
+                    <input type="hidden" name="hora" value="{{ hora }}">
+                    <input type="hidden" name="aula" value="{{ aula }}">
+                    <input type="hidden" name="fecha" value="{{ fecha_actual }}">
+                    
+                    <input type="hidden" name="id_profesor_ausente" value="{{ mapa_ausentes.get((hora, aula), {}).get('id', '') }}">
+            
+                    <button type="submit">Asignar</button>
+                </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
 </table>
 
 <br>

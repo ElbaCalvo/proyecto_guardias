@@ -1,7 +1,8 @@
 class Guardia:
-    def __init__(self, id, profesor_id, fecha, hora, nombre_profesor=None):
-        self.id = id
-        self.profesor_id = profesor_id
+    def __init__(self, id_guardia, fecha, hora, id_profesor_ausente, id_profesor_cubre, aula, nombre_ausente=None, nombre_cubre=None):
+        self.id_guardia = id_guardia
         self.fecha = fecha
         self.hora = hora
-        self.nombre_profesor = nombre_profesor
+        self.id_profesor_ausente = id_profesor_ausente
+        self.id_profesor_cubre = id_profesor_cubre
+        self.aula = aula

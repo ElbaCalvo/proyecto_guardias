@@ -15,15 +15,14 @@
     <input type="hidden" name="profesor_id" value="{{ p[0] }}">
 
     <button type="submit">
-
         {{ p[1] }}
-
-        {% if p[2] == 'presente' %}
+        
+        {# Comparamos con 1 porque en SQLite el booleano se almacena como 1 o 0 #}
+        {% if p[2] == 1 %}
             - PRESENTE
         {% else %}
             - AUSENTE
         {% endif %}
-
     </button>
 
 </form>

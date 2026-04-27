@@ -1,31 +1,41 @@
 from modules.db.db_manager import get_connection
-from modules.guardias.reglas import profesor_disponible
 
-def procesar_guardia(profesor_id, fecha, hora, aula):
-    if not profesor_disponible(profesor_id, fecha):
-        return "No se puede asignar guardia (profesor ausente)"
+def procesar_guardia(id_profesor_ausente, id_profesor_cubre, fecha, hora, aula):
+    """
+    Registra una guardia sustituyendo a un profesor ausente.
+    """
+    
+    if id_profesor_ausente == id_profesor_cubre:
+        return "Error: El profesor ausente y el que cubre no pueden ser la misma persona."
 
     conn = get_connection()
     cursor = conn.cursor()
 
     # Evitar duplicados
     cursor.execute("""
-        SELECT id FROM guardias
-        WHERE profesor_id = ? AND fecha = ? AND hora = ? AND aula = ?
-    """, (profesor_id, fecha, hora, aula))
+        SELECT id_guardia FROM guardias
+        WHERE fecha = ? AND hora = ? AND aula = ?
+    """, (fecha, hora, aula))
 
     existe = cursor.fetchone()
 
     if existe:
         conn.close()
-        return "Ya existe una guardia en ese horario"
+        return "Ya existe una guardia registrada para este horario y aula."
 
-    cursor.execute("""
-        INSERT INTO guardias (profesor_id, fecha, hora, aula)
-        VALUES (?, ?, ?, ?)
-    """, (profesor_id, fecha, hora, aula))
+    # Insertar el registro
+    try:
+        cursor.execute("""
+            INSERT INTO guardias (fecha, hora, id_profesor_ausente, id_profesor_cubre, aula)
+            VALUES (?, ?, ?, ?, ?)
+        """, (fecha, hora, id_profesor_ausente, id_profesor_cubre, aula))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        resultado = "Guardia registrada correctamente."
+    except Exception as e:
+        conn.rollback()
+        resultado = f"Error al registrar la guardia: {str(e)}"
+    finally:
+        conn.close()
 
-    return "Guardia registrada correctamente"
+    return resultado

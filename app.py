@@ -5,77 +5,60 @@ from modules.guardias.motor import procesar_guardia
 
 app = Flask(__name__)
 
-# Datos SIMULADOS de las aulas que requieren cobertura.
-necesidades = {
-    "08:00": ["Aula 101", "Aula 102"],
-    "09:10": ["Aula 201"],
-    "11:20": ["Aula 102"],
-    "13:00": ["Aula 102", "Aula 201"]
-}
-
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.route("/guardias")
 def vista_guardias():
-
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Profesores disponibles hoy
+    cursor.execute("SELECT id_horario, hora, aula, id_profesor FROM horario")
+    filas = cursor.fetchall()
+
+    cursor.execute("SELECT id_profesor, nombre FROM profesores")
+    profesores = cursor.fetchall()
+
+    cursor.execute("SELECT id_profesor_ausente, id_profesor_cubre, hora, aula FROM guardias WHERE fecha = date('now')")
+    guardias_db = cursor.fetchall()
+    asignadas = {(g[2], g[3]): {'ausente': g[0], 'cubre': g[1]} for g in guardias_db}
+
     cursor.execute("""
-        SELECT p.id, p.nombre
-        FROM profesores p
-        JOIN presencia pr ON pr.profesor_id = p.id
-        WHERE pr.fecha = date('now')
-        AND pr.estado = 'presente'
+        SELECT a.hora, h.aula, p.id_profesor, p.nombre
+        FROM ausencias a
+        JOIN profesores p ON a.id_profesor = p.id_profesor
+        JOIN horario h ON a.id_profesor = h.id_profesor AND a.hora = h.hora
+        WHERE a.fecha = date('now')
     """)
+    ausencias_db = cursor.fetchall()
+    
+    mapa_ausentes = {}
+    for a in ausencias_db:
+        mapa_ausentes[(a[0], a[1])] = {'id': a[2], 'nombre': a[3]}
 
-    profesores_disponibles = cursor.fetchall()
-
-    # Guardias ya asignadas
-    cursor.execute("""
-        SELECT profesor_id, hora, aula
-        FROM guardias
-    """)
-
-    guardias_bd = cursor.fetchall()
     conn.close()
-
-    # Convertir a diccionario
-    asignadas = {}
-    for profesor_id, hora, aula in guardias_bd:
-        asignadas[(hora, aula)] = profesor_id
-
-    # Generar tabla desde necesidades
-    filas_guardia = []
-
-    for hora, aulas in necesidades.items():
-        for aula in aulas:
-            filas_guardia.append((hora, aula))
 
     return render_template(
         "guardias.html",
-        filas=filas_guardia,
-        profesores=profesores_disponibles,
-        asignadas=asignadas
+        filas=filas,
+        mapa_ausentes=mapa_ausentes,
+        asignadas=asignadas,
+        profesores=profesores,
+        fecha_actual=date.today().isoformat()
     )
 
 @app.route("/eliminar", methods=["POST"])
 def eliminar_guardia():
-
     hora = request.form["hora"]
     aula = request.form["aula"]
 
     conn = get_connection()
     cursor = conn.cursor()
-
     cursor.execute("""
         DELETE FROM guardias
         WHERE hora = ? AND aula = ?
     """, (hora, aula))
-
     conn.commit()
     conn.close()
 
@@ -83,14 +66,15 @@ def eliminar_guardia():
 
 @app.route("/registrar", methods=["POST"])
 def registrar_guardia():
-
-    profesor_id = int(request.form["profesor_id"])
+    id_ausente = int(request.form["id_profesor_ausente"])
+    id_cubre = int(request.form["id_profesor_cubre"])
     hora = request.form["hora"]
     aula = request.form["aula"]
-    fecha = date.today().isoformat()
+    fecha = request.form["fecha"]
 
-    resultado = procesar_guardia(profesor_id, fecha, hora, aula)
-
+    # Llamamos a tu motor con los nuevos parámetros
+    resultado = procesar_guardia(id_ausente, id_cubre, fecha, hora, aula)
+    
     return redirect(url_for("vista_guardias"))
 
 @app.route("/presencia")
@@ -98,16 +82,16 @@ def vista_presencia():
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Ajustado a id_profesor
     cursor.execute("""
         SELECT 
-            p.id,
+            p.id_profesor,
             p.nombre,
-            COALESCE(pr.estado, 'ausente') as estado
+            COALESCE(pr.presente, 0) as presente
         FROM profesores p
         LEFT JOIN presencia pr 
-        ON p.id = pr.profesor_id AND pr.fecha = date('now')
+        ON p.id_profesor = pr.id_profesor AND pr.fecha = date('now')
     """)
-
     profesores = cursor.fetchall()
     conn.close()
 
@@ -122,21 +106,17 @@ def toggle_presencia():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id FROM presencia
-        WHERE profesor_id = ? AND fecha = ?
+        SELECT id_presencia FROM presencia
+        WHERE id_profesor = ? AND fecha = ?
     """, (profesor_id, fecha))
-
     existe = cursor.fetchone()
 
     if existe:
-        cursor.execute("""
-            DELETE FROM presencia
-            WHERE profesor_id = ? AND fecha = ?
-        """, (profesor_id, fecha))
+        cursor.execute("DELETE FROM presencia WHERE id_profesor = ? AND fecha = ?", (profesor_id, fecha))
     else:
         cursor.execute("""
-            INSERT INTO presencia (profesor_id, fecha, estado)
-            VALUES (?, ?, 'presente')
+            INSERT INTO presencia (id_profesor, fecha, hora, presente) 
+            VALUES (?, ?, 0, 1)
         """, (profesor_id, fecha))
 
     conn.commit()

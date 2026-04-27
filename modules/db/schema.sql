@@ -1,40 +1,45 @@
 CREATE TABLE profesores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_profesor INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     departamento TEXT NOT NULL
 );
 
-CREATE TABLE horarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profesor_id INTEGER NOT NULL,
-    dia TEXT NOT NULL CHECK(dia IN ('lunes','martes','miercoles','jueves','viernes')),
+CREATE TABLE horario (
+    id_horario INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_profesor INTEGER NOT NULL,
+    dia_semana INTEGER NOT NULL CHECK(dia_semana BETWEEN 1 AND 5),
     hora INTEGER NOT NULL,
-    UNIQUE(profesor_id, dia, hora),
-    FOREIGN KEY (profesor_id) REFERENCES profesores(id)
+    tipo TEXT NOT NULL CHECK(tipo IN ('clase', 'guardia', 'libre')),
+    aula TEXT,
+    UNIQUE(id_profesor, dia_semana, hora), -- Para que un profesor no tenga dos clases al mismo tiempo
+    FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor)
 );
 
 CREATE TABLE ausencias (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profesor_id INTEGER NOT NULL,
+    id_ausencia INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_profesor INTEGER NOT NULL,
     fecha DATE NOT NULL,
-    motivo TEXT,
-    FOREIGN KEY (profesor_id) REFERENCES profesores(id)
+    hora INTEGER NOT NULL,
+    FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor)
 );
 
 CREATE TABLE presencia (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profesor_id INTEGER NOT NULL,
+    id_presencia INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_profesor INTEGER NOT NULL,
     fecha DATE NOT NULL,
-    estado TEXT NOT NULL CHECK(estado IN ('presente', 'ausente')),
-    FOREIGN KEY (profesor_id) REFERENCES profesores(id)
+    hora INTEGER NOT NULL,
+    presente BOOLEAN NOT NULL,
+    FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor)
 );
 
 CREATE TABLE guardias (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profesor_id INTEGER NOT NULL,
+    id_guardia INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha DATE NOT NULL,
-    hora TEXT NOT NULL,
+    hora INTEGER NOT NULL,
+    id_profesor_ausente INTEGER NOT NULL,
+    id_profesor_cubre INTEGER NOT NULL,
     aula TEXT NOT NULL,
-    UNIQUE(profesor_id, fecha, hora, aula),
-    FOREIGN KEY (profesor_id) REFERENCES profesores(id)
+    UNIQUE(id_profesor_cubre, fecha, hora, aula), -- Para que no se asignen dos guardias al mismo profesor
+    FOREIGN KEY (id_profesor_ausente) REFERENCES profesores(id_profesor),
+    FOREIGN KEY (id_profesor_cubre) REFERENCES profesores(id_profesor)
 );
