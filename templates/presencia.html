@@ -9,26 +9,17 @@
 <h1>Control de presencia</h1>
 
 {% for p in profesores %}
-
 <form method="POST" action="/toggle_presencia">
-
-    <input type="hidden" name="profesor_id" value="{{ p[0] }}">
-
+    <input type="hidden" name="profesor_id" value="{{ p[0] }}"><br>
     <button type="submit">
-        {{ p[1] }}
-        
-        {# Comparamos con 1 porque en SQLite el booleano se almacena como 1 o 0 #}
+        {{ p[1] }} - 
         {% if p[2] == 1 %}
-            - PRESENTE
+            <b style="color: green;">PRESENTE</b>
         {% else %}
-            - AUSENTE
+            <b style="color: red;">AUSENTE</b>
         {% endif %}
     </button>
-
 </form>
-
-<br>
-
 {% endfor %}
 
 <br>

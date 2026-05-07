@@ -9,6 +9,13 @@ cursor = conn.cursor()
 #cursor.execute("INSERT INTO presencia (id_profesor, fecha, presente, hora) VALUES (?, ?, ?, ?)", (1, "2026-04-14", 1, "08:00"))
 #cursor.execute("INSERT INTO presencia (id_profesor, fecha, presente, hora) VALUES (?, ?, ?, ?)", (2, "2026-04-14", 0, "09:00"))
 
+# Actualizamos el id_profesor en la tabla horario
+# Cambiamos el 1 por el 7 (Ana)
+#cursor.execute("UPDATE horario SET id_profesor = 7 WHERE id_profesor = 1")
+
+# Cambiamos el 2 por el 8 (Pedro)
+#cursor.execute("UPDATE horario SET id_profesor = 8 WHERE id_profesor = 2")
+
 conn.commit()
 
 cursor.execute("SELECT * FROM profesores")
@@ -21,5 +28,8 @@ cursor.execute("SELECT * FROM presencia")
 print(cursor.fetchall())
 
 cursor.execute("SELECT * FROM ausencias")
+print(cursor.fetchall())
+
+cursor.execute("SELECT * FROM guardias")
 print(cursor.fetchall())
 conn.close()
