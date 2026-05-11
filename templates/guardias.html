@@ -5,6 +5,7 @@
     <style>
         .asignada { background-color: #d4edda; }
         .fila-tabla { padding: 10px; }
+        button { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -29,15 +30,21 @@
     <tr class="{% if (hora, aula) in asignadas %}asignada{% endif %}">
         <td>{{ hora }}ª</td>
         <td>{{ aula }}</td>
-
-        <td>{{ mapa_ausentes.get((hora, aula), {}).get('nombre', 'Sin clase') }}</td>
+        <td>{{ nombre_ausente }}</td>
         
         <td>
-            <select name="id_profesor_cubre" form="form_asignar_{{ loop.index }}" required>
-                {% for p in profesores %}
-                    <option value="{{ p[0] }}">{{ p[1] }}</option>
-                {% endfor %}
-            </select>
+            {% if (hora, aula) not in asignadas %}
+                <select name="id_profesor_cubre" form="form_asignar_{{ loop.index }}" required>
+                    <option value="">Seleccionar...</option>
+                    {% for p in sustitutos_por_hora.get(hora, []) %}
+                        <option value="{{ p[0] }}">
+                            {{ p[1] }} ({{ p[2] }} guardias hechas)
+                        </option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <span style="color: green;">✔ Asignada</span>
+            {% endif %}
         </td>
 
         <td>
@@ -46,17 +53,16 @@
                 <form method="POST" action="/eliminar" style="display:inline;">
                     <input type="hidden" name="hora" value="{{ hora }}">
                     <input type="hidden" name="aula" value="{{ aula }}">
-                    <button type="submit">Eliminar</button>
+                    <button type="submit" style="background-color: #ffcccc;">Eliminar</button>
                 </form>
             {% else %}
                 <form id="form_asignar_{{ loop.index }}" method="POST" action="/registrar">
                     <input type="hidden" name="hora" value="{{ hora }}">
                     <input type="hidden" name="aula" value="{{ aula }}">
                     <input type="hidden" name="fecha" value="{{ fecha_actual }}">
-                    
-                    <input type="hidden" name="id_profesor_ausente" value="{{ mapa_ausentes.get((hora, aula), {}).get('id', '') }}">
+                    <input type="hidden" name="id_profesor_ausente" value="{{ id_ausente }}">
             
-                    <button type="submit">Asignar</button>
+                    <button type="submit">Asignar Guardia</button>
                 </form>
             {% endif %}
         </td>

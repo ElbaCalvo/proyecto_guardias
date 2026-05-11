@@ -30,15 +30,28 @@ def obtener_profesores():
             for f in filas
         ]
 
-def obtener_profesores_disponibles_hoy():
-    """Para el desplegable: solo los que han fichado 'presente' hoy"""
+def obtener_profesores_disponibles_en_hora(dia_semana, hora):
+    """Devuelve profesores que:
+       1. Están presentes hoy.
+       2. Tienen esa hora libre en su horario.
+       3. Ordenados por quién lleva MENOS guardias totales (Prioridad).
+    """
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT p.id_profesor, p.nombre FROM profesores p
+            SELECT p.id_profesor, p.nombre, COUNT(g.id_guardia) as total_guardias
+            FROM profesores p
             JOIN presencia pr ON p.id_profesor = pr.id_profesor
-            WHERE pr.fecha = date('now') AND pr.presente = 1
-        """)
+            JOIN horario h ON p.id_profesor = h.id_profesor
+            LEFT JOIN guardias g ON p.id_profesor = g.id_profesor_cubre
+            WHERE pr.fecha = date('now') 
+              AND pr.presente = 1
+              AND h.dia_semana = ? 
+              AND h.hora = ? 
+              AND h.tipo = 'libre'
+            GROUP BY p.id_profesor
+            ORDER BY total_guardias ASC, p.nombre ASC
+        """, (dia_semana, hora))
         return cursor.fetchall()
 
 # -------- AUSENCIAS --------
@@ -64,7 +77,7 @@ def obtener_ausencias():
         ]
 
 def obtener_ausencias_con_datos_profesor(dia_semana):
-    """Esta es la que necesita la tabla de guardias para mostrar el NOMBRE y el AULA"""
+    """Filtra para mostrar solo las horas de tipo 'clase' que necesitan guardia"""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -75,6 +88,7 @@ def obtener_ausencias_con_datos_profesor(dia_semana):
                            AND a.hora = h.hora 
                            AND h.dia_semana = ?
             WHERE a.fecha = date('now')
+              AND h.tipo = 'clase'
         """, (dia_semana,))
         return cursor.fetchall()
 

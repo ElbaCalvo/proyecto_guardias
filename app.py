@@ -12,21 +12,25 @@ def index():
 @app.route("/guardias")
 def vista_guardias():
     dia_actual = datetime.now().isoweekday()
+    fecha_hoy = date.today().isoformat()
     
     filas = db.obtener_ausencias_con_datos_profesor(dia_actual)
-    profesores_lista = db.obtener_profesores_disponibles_hoy()
+    
     guardias_db = db.obtener_guardias_con_nombre_cubre()
-
-    mapa_ausentes = {(f[0], f[1]): {'id': f[2], 'nombre': f[3]} for f in filas}
     asignadas = {(g[0], g[1]): {'cubre': g[2]} for g in guardias_db}
+
+    sustitutos_por_hora = {}
+    for f in filas:
+        hora_ausencia = f[0]
+        if hora_ausencia not in sustitutos_por_hora:
+            sustitutos_por_hora[hora_ausencia] = db.obtener_profesores_disponibles_en_hora(dia_actual, hora_ausencia)
 
     return render_template(
         "guardias.html", 
         filas=filas,
-        mapa_ausentes=mapa_ausentes, 
-        profesores=profesores_lista,
+        sustitutos_por_hora=sustitutos_por_hora, # Pasamos el diccionario
         asignadas=asignadas,
-        fecha_actual=date.today().isoformat()
+        fecha_actual=fecha_hoy
     )
 
 @app.route("/registrar", methods=["POST"])
