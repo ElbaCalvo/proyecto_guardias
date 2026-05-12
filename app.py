@@ -26,9 +26,9 @@ def vista_guardias():
             sustitutos_por_hora[hora_ausencia] = db.obtener_profesores_disponibles_en_hora(dia_actual, hora_ausencia)
 
     return render_template(
-        "guardias.html", 
+        "guardias.html",
         filas=filas,
-        sustitutos_por_hora=sustitutos_por_hora, # Pasamos el diccionario
+        sustitutos_por_hora=sustitutos_por_hora,
         asignadas=asignadas,
         fecha_actual=fecha_hoy
     )

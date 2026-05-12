@@ -1,29 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
     <title>Control de presencia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
-<body>
+<body class="bg-light">
+<div class="container py-4">
 
-<h1>Control de presencia</h1>
+    <h1 class="text-center mb-4">Control de presencia</h1>
 
-{% for p in profesores %}
-<form method="POST" action="/toggle_presencia">
-    <input type="hidden" name="profesor_id" value="{{ p[0] }}"><br>
-    <button type="submit">
-        {{ p[1] }} - 
-        {% if p[2] == 1 %}
-            <b style="color: green;">PRESENTE</b>
-        {% else %}
-            <b style="color: red;">AUSENTE</b>
-        {% endif %}
-    </button>
-</form>
-{% endfor %}
+    <br>
 
-<br>
-<a href="/">Volver</a>
+    <div class="row g-3">
+
+        {% for p in profesores %}
+
+        <div class="col-12 col-md-6 col-lg-4">
+            <form method="POST" action="/toggle_presencia">
+                <input type="hidden" name="profesor_id" value="{{ p[0] }}">
+                {% if p[2] == 1 %}
+                <button type="submit" class="btn btn-success w-100 py-3">
+                    <div class="fw-bold">{{ p[1] }}</div>
+                    <div>✓ PRESENTE</div>
+                </button>
+
+                {% else %}
+
+                <button type="submit" class="btn btn-danger w-100 py-3">
+                    <div class="fw-bold">{{ p[1] }}</div>
+                    <div>✕ AUSENTE</div>
+                </button>
+
+                {% endif %}
+            </form>
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    <br><br>
+
+    <div class="row mt-4">
+        <div class="col-8 col-md-4 col-lg-3 mx-auto">
+            <a href="/" class="btn btn-secondary w-100 d-block">Volver</a>
+        </div>
+    </div>
+
+</div>
 
 </body>
 </html>
