@@ -206,17 +206,26 @@ def comprobar_guardia_existente(fecha, hora, aula):
         return cursor.fetchone() is not None
 
 def registrar_guardia(fecha, hora, id_ausente, id_cubre, aula):
-    """Mueve el SQL de inserción aquí"""
+    """Registra la guardia y actualiza los contadores del profesor (Requisito PDF)"""
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
+            
             cursor.execute("""
                 INSERT INTO guardias (fecha, hora, id_profesor_ausente, id_profesor_cubre, aula)
                 VALUES (?, ?, ?, ?, ?)
             """, (fecha, hora, id_ausente, id_cubre, aula))
+            
+            cursor.execute("""
+                UPDATE profesores 
+                SET guardias_acumuladas = guardias_acumuladas + 1 
+                WHERE id_profesor = ?
+            """, (id_cubre,))
+            
             conn.commit()
             return True
-    except Exception:
+    except Exception as e:
+        print(f"Error en BD: {e}")
         return False
     
 def obtener_datos_para_ranking(dia_semana, hora):
