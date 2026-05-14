@@ -54,6 +54,32 @@ def obtener_profesores_disponibles_en_hora(dia_semana, hora):
         """, (dia_semana, hora))
         return cursor.fetchall()
 
+def detectar_ausencias_automaticas(dia_semana, hora_lectiva):
+    """
+    Inserta en la tabla ausencias a los profesores que tienen clase 
+    pero no han registrado su presencia hoy.
+    """
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO ausencias (id_profesor, fecha, hora)
+            SELECT h.id_profesor, date('now'), h.hora
+            FROM horario h
+            WHERE h.dia_semana = ? 
+              AND h.hora = ? 
+              AND h.tipo = 'clase'
+              AND h.id_profesor NOT IN (
+                  SELECT id_profesor FROM presencia WHERE fecha = date('now')
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM ausencias a 
+                  WHERE a.id_profesor = h.id_profesor 
+                    AND a.fecha = date('now') 
+                    AND a.hora = h.hora
+              )
+        """, (dia_semana, hora_lectiva))
+        conn.commit()
+        
 # -------- AUSENCIAS --------
 
 def registrar_ausencia(id_profesor, fecha, hora):

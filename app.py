@@ -11,11 +11,39 @@ def index():
 
 @app.route("/guardias")
 def vista_guardias():
+    ahora = datetime.now()
     dia_actual = datetime.now().isoweekday()
+    hora_reloj = ahora.hour
+    min_reloj = ahora.minute
     fecha_hoy = date.today().isoformat()
     
-    filas = db.obtener_ausencias_con_datos_profesor(dia_actual)
+    # 1ª Hora (08:30 - 09:20) -> Se marca ausencia a las 08:45
+    if (hora_reloj == 8 and min_reloj >= 45) or (hora_reloj == 9 and min_reloj < 20):
+        db.detectar_ausencias_automaticas(dia_actual, 1)
+        
+    # 2ª Hora (09:20 - 10:10) -> Se marca ausencia a las 09:35
+    elif (hora_reloj == 9 and min_reloj >= 35) or (hora_reloj == 10 and min_reloj < 10):
+        db.detectar_ausencias_automaticas(dia_actual, 2)
+        
+    # 3ª Hora (10:10 - 11:00) -> Se marca ausencia a las 10:25
+    elif (hora_reloj == 10 and min_reloj >= 25) or (hora_reloj == 11 and min_reloj < 0):
+        db.detectar_ausencias_automaticas(dia_actual, 3)
+        
+    # RECREO (11:00 - 11:30)
     
+    # 4ª Hora (11:30 - 12:20) -> Se marca ausencia a las 11:45
+    elif (hora_reloj == 11 and min_reloj >= 45) or (hora_reloj == 12 and min_reloj < 20):
+        db.detectar_ausencias_automaticas(dia_actual, 4)
+
+    # 5ª Hora (12:20 - 13:10) -> Se marca ausencia a las 12:35
+    elif (hora_reloj == 12 and min_reloj >= 35) or (hora_reloj == 13 and min_reloj < 10):
+        db.detectar_ausencias_automaticas(dia_actual, 5)
+
+    # 6ª Hora (13:10 - 14:00) -> Se marca ausencia a las 13:25
+    elif (hora_reloj == 13 and min_reloj >= 25) or (hora_reloj == 14 and min_reloj < 0):
+        db.detectar_ausencias_automaticas(dia_actual, 6)
+    
+    filas = db.obtener_ausencias_con_datos_profesor(dia_actual)
     guardias_db = db.obtener_guardias_con_nombre_cubre()
     asignadas = {(g[0], g[1]): {'cubre': g[2]} for g in guardias_db}
 
