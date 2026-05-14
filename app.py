@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, flash, render_template, request, redirect, url_for
 from datetime import date, datetime
 import modules.db.db_manager as db
-from modules.guardias.motor import procesar_guardia
+from modules.guardias.motor import obtener_ranking_sustitutos, procesar_guardia
 
 app = Flask(__name__)
 
@@ -51,7 +51,7 @@ def vista_guardias():
     for f in filas:
         hora_ausencia = f[0]
         if hora_ausencia not in sustitutos_por_hora:
-            sustitutos_por_hora[hora_ausencia] = db.obtener_profesores_disponibles_en_hora(dia_actual, hora_ausencia)
+            sustitutos_por_hora[hora_ausencia] = obtener_ranking_sustitutos(dia_actual, hora_ausencia)
 
     return render_template(
         "guardias.html",
@@ -63,13 +63,16 @@ def vista_guardias():
 
 @app.route("/registrar", methods=["POST"])
 def registrar_guardia():
-    procesar_guardia(
+    mensaje = procesar_guardia(
         int(request.form["id_profesor_ausente"]),
         int(request.form["id_profesor_cubre"]),
         request.form["fecha"],
         request.form["hora"],
         request.form["aula"]
     )
+    
+    flash(mensaje) 
+    
     return redirect(url_for("vista_guardias"))
 
 @app.route("/eliminar", methods=["POST"])

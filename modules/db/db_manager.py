@@ -79,7 +79,7 @@ def detectar_ausencias_automaticas(dia_semana, hora_lectiva):
               )
         """, (dia_semana, hora_lectiva))
         conn.commit()
-        
+
 # -------- AUSENCIAS --------
 
 def registrar_ausencia(id_profesor, fecha, hora):
@@ -169,16 +169,6 @@ def gestionar_fichaje_toggle(profesor_id, dia_semana):
 
 # -------- GUARDIAS --------
 
-def registrar_guardia(fecha, hora, id_profesor_ausente, id_profesor_cubre, aula):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """INSERT INTO guardias (fecha, hora, id_profesor_ausente, id_profesor_cubre, aula) 
-               VALUES (?, ?, ?, ?, ?)""",
-            (fecha, hora, id_profesor_ausente, id_profesor_cubre, aula)
-        )
-        conn.commit()
-
 def obtener_guardias():
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -204,3 +194,44 @@ def eliminar_guardia_por_hora_aula(hora, aula):
     with get_connection() as conn:
         conn.execute("DELETE FROM guardias WHERE hora = ? AND aula = ? AND fecha = date('now')", (hora, aula))
         conn.commit()
+
+def comprobar_guardia_existente(fecha, hora, aula):
+    """Mueve el SQL de comprobación aquí"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id_guardia FROM guardias
+            WHERE fecha = ? AND hora = ? AND aula = ?
+        """, (fecha, hora, aula))
+        return cursor.fetchone() is not None
+
+def registrar_guardia(fecha, hora, id_ausente, id_cubre, aula):
+    """Mueve el SQL de inserción aquí"""
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO guardias (fecha, hora, id_profesor_ausente, id_profesor_cubre, aula)
+                VALUES (?, ?, ?, ?, ?)
+            """, (fecha, hora, id_ausente, id_cubre, aula))
+            conn.commit()
+            return True
+    except Exception:
+        return False
+    
+def obtener_datos_para_ranking(dia_semana, hora):
+    """La consulta completa para los 3 criterios del PDF"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.id_profesor, p.nombre,
+                (SELECT COUNT(*) FROM guardias WHERE id_profesor_cubre = p.id_profesor) as total,
+                (SELECT COUNT(*) FROM guardias WHERE id_profesor_cubre = p.id_profesor AND fecha >= date('now', 'weekday 1', '-7 days')) as semana,
+                (SELECT COUNT(*) FROM horario WHERE id_profesor = p.id_profesor AND tipo = 'clase') as carga
+            FROM profesores p
+            JOIN presencia pr ON p.id_profesor = pr.id_profesor
+            JOIN horario h ON p.id_profesor = h.id_profesor
+            WHERE pr.fecha = date('now') AND pr.presente = 1
+              AND h.dia_semana = ? AND h.hora = ? AND h.tipo = 'libre'
+        """, (dia_semana, hora))
+        return cursor.fetchall()
