@@ -41,8 +41,8 @@
                         <select class="form-select form-select-sm" name="id_profesor_cubre" form="form_asignar_{{ loop.index }}" required>
                             <option value="">Seleccionar...</option>
                             {% for p in sustitutos_por_hora.get(hora, []) %}
-                                <option value="{{ p[0] }}">
-                                    {{ p[1] }} ({{ p[2] }} guardias hechas)
+                                <option value="{{ p.id_profesor }}">
+                                    {{ p.nombre }} ({{ p.total_guardias }} tot / {{ p.guardias_semana }} sem)
                                 </option>
                             {% endfor %}
                         </select>

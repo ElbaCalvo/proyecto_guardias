@@ -4,6 +4,13 @@ import modules.db.db_manager as db
 from modules.guardias.motor import obtener_ranking_sustitutos, procesar_guardia
 
 app = Flask(__name__)
+app.secret_key = 'proyecto_guardias_clave_secreta'
+
+try:
+    from mfrc522 import SimpleMFRC522
+    lector_rfid = SimpleMFRC522()
+except ImportError:
+    lector_rfid = None
 
 @app.route("/")
 def index():
@@ -88,9 +95,25 @@ def vista_presencia():
 
 @app.route("/toggle_presencia", methods=["POST"])
 def toggle_presencia():
-    pid = request.form["profesor_id"]
-    dia = datetime.now().isoweekday() 
-    db.gestionar_fichaje_toggle(pid, dia)
+    profesor_id = int(request.form["profesor_id"])
+    dia_actual = datetime.now().isoweekday()
+    
+    if lector_rfid is not None:
+        try:
+            print("Lector RFID activo. Esperando tarjeta...")
+            id_tarjeta, texto = lector_rfid.read() 
+            
+            if id_tarjeta: 
+                db.gestionar_fichaje_toggle(profesor_id, dia_actual)
+                flash("Identificación RFID correcta. Estado actualizado.", "success")
+            else:
+                flash("Tarjeta RFID no reconocida o no asociada a este profesor.", "danger")
+        except Exception as e:
+            flash(f"Error físico en el lector de hardware: {e}", "danger")
+    else:
+        db.gestionar_fichaje_toggle(profesor_id, dia_actual)
+        flash("Aviso: Hardware RFID no detectado (Ejecutando en modo local). Estado actualizado.", "warning")
+        
     return redirect(url_for("vista_presencia"))
 
 if __name__ == "__main__":

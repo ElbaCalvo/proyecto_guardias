@@ -36,3 +36,12 @@ class Guardia:
         self.id_profesor_ausente = id_profesor_ausente
         self.id_profesor_cubre = id_profesor_cubre
         self.aula = aula
+
+class ProfesorDisponible:
+    """Modelo de dominio para el motor de cálculo (Punto 1.1.3.1)"""
+    def __init__(self, id_profesor, nombre, total_guardias, guardias_semana, carga_lectiva):
+        self.id_profesor = id_profesor
+        self.nombre = nombre
+        self.total_guardias = total_guardias
+        self.guardias_semana = guardias_semana
+        self.carga_lectiva = carga_lectiva
