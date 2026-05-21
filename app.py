@@ -2,16 +2,10 @@ from flask import Flask, flash, render_template, request, redirect, url_for
 from datetime import date, datetime
 import modules.db.db_manager as db
 from modules.guardias.motor import obtener_ranking_sustitutos, procesar_guardia
+from modules.presencia.rfid import leer_tarjeta
 
 app = Flask(__name__) # Inicialización de la aplicación Flask
 app.secret_key = 'proyecto_guardias_clave_secreta' # Clave secreta para sesiones y flash messages
-
-# Bloque de inicialización del hardware físico para lectura de tarjetas RFID
-try:
-    from mfrc522 import SimpleMFRC522
-    lector_rfid = SimpleMFRC522()
-except ImportError:
-    lector_rfid = None
 
 @app.route("/")
 def index():
@@ -125,29 +119,20 @@ def vista_presencia():
 @app.route("/toggle_presencia", methods=["POST"])
 def toggle_presencia():
     """
-    Controlador para cambiar el estado de asistencia de un profesor (Entrada/Salida).
-    Implementa la arquitectura híbrida: procesa mediante hardware real (lector RFID) 
-    si está disponible, o mediante un bypass manual en entorno local de desarrollo.
+    Controlador para cambiar el estado de asistencia de un profesor.
+    Ahora utiliza el módulo modularizado en modules/presencia/rfid.py
     """
     profesor_id = int(request.form["profesor_id"])
     dia_actual = datetime.now().isoweekday()
     
-    # Integración de la capa física de hardware
-    if lector_rfid is not None:
-        try:
-            print("Lector RFID activo. Esperando tarjeta...")
-            id_tarjeta, texto = lector_rfid.read() 
-            
-            if id_tarjeta: # Si se detecta una tarjeta, se verifica que esté asociada al profesor
-                db.gestionar_fichaje_toggle(profesor_id, dia_actual)
-                flash("Identificación RFID correcta. Estado actualizado.", "success")
-            else:
-                flash("Tarjeta RFID no reconocida o no asociada a este profesor.", "danger")
-        except Exception as e:
-            flash(f"Error físico en el lector de hardware: {e}", "danger")
-    else:
+    # Intentamos leer la tarjeta usando tu nuevo módulo
+    id_tarjeta = leer_tarjeta()
+    
+    if id_tarjeta:
         db.gestionar_fichaje_toggle(profesor_id, dia_actual)
-        flash("Aviso: Hardware RFID no detectado (Ejecutando en modo local). Estado actualizado.", "warning")
+        flash(f"Identificación correcta (ID: {id_tarjeta}). Estado actualizado.", "success")
+    else:
+        flash("Error: No se ha detectado tarjeta o el lector no responde.", "danger")
         
     return redirect(url_for("vista_presencia"))
 
