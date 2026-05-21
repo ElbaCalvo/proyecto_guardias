@@ -5,6 +5,7 @@
     <title>Guardias</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        /* Clase CSS para destacar visualmente las filas de guardias cubiertas */
         .asignada { background-color: #d4edda !important; }
     </style>
 </head>
@@ -26,20 +27,24 @@
         </thead>
 
         <tbody>
+            {# Bucle principal para renderizar las ausencias detectadas en la jornada actual #}
             {% for f in filas %}
             {% set hora = f[0] %}
             {% set aula = f[1] %}
             {% set id_ausente = f[2] %}
             {% set nombre_ausente = f[3] %}
 
-            <tr class="{% if (hora, aula) in asignadas %}table-success{% endif %}">                <td>{{ hora }}ª</td>
+            <tr class="{% if (hora, aula) in asignadas %}table-success{% endif %}">                
+                <td>{{ hora }}ª</td>
                 <td>{{ aula }}</td>
                 <td>{{ nombre_ausente }}</td>
                 
                 <td>
+                    {# Si no está asignada, muestra el selector de sustitutos #}
                     {% if (hora, aula) not in asignadas %}
                         <select class="form-select form-select-sm" name="id_profesor_cubre" form="form_asignar_{{ loop.index }}" required>
                             <option value="">Seleccionar...</option>
+                            {# Carga el ranking de sustitutos ordenados por prioridad #}
                             {% for p in sustitutos_por_hora.get(hora, []) %}
                                 <option value="{{ p.id_profesor }}">
                                     {{ p.nombre }} ({{ p.total_guardias }} tot / {{ p.guardias_semana }} sem)
@@ -52,6 +57,7 @@
                 </td>
 
                 <td>
+                    {# Si la guardia ya existe en la BD, muestra el botón para borrarla #}
                     {% if (hora, aula) in asignadas %}
                         
                     <form method="POST" action="/eliminar" class="d-inline">

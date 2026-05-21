@@ -14,12 +14,13 @@
     <br>
 
     <div class="row g-3">
-
+        {# Bucle para recorrer la lista global de profesores y su estado actual de fichaje #}
         {% for p in profesores %}
 
         <div class="col-12 col-md-6 col-lg-4">
             <form method="POST" action="/toggle_presencia">
                 <input type="hidden" name="profesor_id" value="{{ p[0] }}">
+                {# El botón cambia de color y texto según el estado de presencia del profesor #}
                 {% if p[2] == 1 %}
                 <button type="submit" class="btn btn-success w-100 py-3">
                     <div class="fw-bold">{{ p[1] }}</div>

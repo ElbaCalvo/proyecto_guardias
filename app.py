@@ -3,9 +3,10 @@ from datetime import date, datetime
 import modules.db.db_manager as db
 from modules.guardias.motor import obtener_ranking_sustitutos, procesar_guardia
 
-app = Flask(__name__)
-app.secret_key = 'proyecto_guardias_clave_secreta'
+app = Flask(__name__) # Inicialización de la aplicación Flask
+app.secret_key = 'proyecto_guardias_clave_secreta' # Clave secreta para sesiones y flash messages
 
+# Bloque de inicialización del hardware físico para lectura de tarjetas RFID
 try:
     from mfrc522 import SimpleMFRC522
     lector_rfid = SimpleMFRC522()
@@ -14,16 +15,27 @@ except ImportError:
 
 @app.route("/")
 def index():
+    """
+    Ruta principal del sistema.
+    Renderiza la página de inicio del panel de gestión de guardias del IES.
+    """
     return render_template("index.html")
 
 @app.route("/guardias")
 def vista_guardias():
+    """
+    Controlador de la interfaz web de gestión de ausencias y asignación de guardias.
+    Comprueba de manera automatizada las franjas horarias del instituto, calcula
+    las ausencias automáticas por inasistencia y obtiene el ranking de sustitutos idóneos.
+    """
     ahora = datetime.now()
     dia_actual = datetime.now().isoweekday()
     hora_reloj = ahora.hour
     min_reloj = ahora.minute
     fecha_hoy = date.today().isoformat()
     
+    # SISTEMA AUTOMÁTICO DE DETECCIÓN DE AUSENCIAS SEGÚN LA HORA DEL RELOJ
+
     # 1ª Hora (08:30 - 09:20) -> Se marca ausencia a las 08:45
     if (hora_reloj == 8 and min_reloj >= 45) or (hora_reloj == 9 and min_reloj < 20):
         db.detectar_ausencias_automaticas(dia_actual, 1)
@@ -50,16 +62,21 @@ def vista_guardias():
     elif (hora_reloj == 13 and min_reloj >= 25) or (hora_reloj == 14 and min_reloj < 0):
         db.detectar_ausencias_automaticas(dia_actual, 6)
     
-    filas = db.obtener_ausencias_con_datos_profesor(dia_actual)
-    guardias_db = db.obtener_guardias_con_nombre_cubre()
+    filas = db.obtener_ausencias_con_datos_profesor(dia_actual) # Obtiene las ausencias del día actual junto con los datos de los profesores ausentes
+    
+    # Recupera las guardias ya cubiertas y confirmadas desde la base de datos
+    guardias_db = db.obtener_guardias_con_nombre_cubre() 
     asignadas = {(g[0], g[1]): {'cubre': g[2]} for g in guardias_db}
 
+    # Generar el ranking ordenado de profesores sustitutos para cada hora con ausencias
     sustitutos_por_hora = {}
     for f in filas:
         hora_ausencia = f[0]
         if hora_ausencia not in sustitutos_por_hora:
+            # Aplico las prioridades en cascada
             sustitutos_por_hora[hora_ausencia] = obtener_ranking_sustitutos(dia_actual, hora_ausencia)
 
+    # Envío todos los datos recopilados e interconectados a la plantilla HTML
     return render_template(
         "guardias.html",
         filas=filas,
@@ -70,7 +87,11 @@ def vista_guardias():
 
 @app.route("/registrar", methods=["POST"])
 def registrar_guardia():
-    mensaje = procesar_guardia(
+    """
+    Controlador para procesar el formulario de asignación de una guardia.
+    Valida las reglas del negocio llamando a la capa del motor y devuelve una alerta.
+    """
+    mensaje = procesar_guardia( # Llamada a la función del motor de reglas para procesar la asignación de guardia
         int(request.form["id_profesor_ausente"]),
         int(request.form["id_profesor_cubre"]),
         request.form["fecha"],
@@ -78,32 +99,46 @@ def registrar_guardia():
         request.form["aula"]
     )
     
-    flash(mensaje) 
+    flash(mensaje) # Almacena el mensaje del resultado en la sesión web para el usuario
     
     return redirect(url_for("vista_guardias"))
 
 @app.route("/eliminar", methods=["POST"])
 def eliminar_guardia():
+    """
+    Controlador para cancelar o eliminar una asignación de guardia existente.
+    Redirige a la vista de guardias tras actualizar la base de datos.
+    """
     db.eliminar_guardia_por_hora_aula(request.form["hora"], request.form["aula"])
     return redirect(url_for("vista_guardias"))
 
 @app.route("/presencia")
 def vista_presencia():
-    db.limpiar_tablas_diarias()
+    """
+    Controlador de la interfaz web para el control diario de presencia.
+    Limpia los datos del día anterior y solicita la lista actualizada de estados.
+    """
+    db.limpiar_tablas_diarias() # Limpia las tablas de ausencias y fichajes del día anterior para empezar fresco cada día
     profesores = db.obtener_estado_presencia_todos()
     return render_template("presencia.html", profesores=profesores)
 
 @app.route("/toggle_presencia", methods=["POST"])
 def toggle_presencia():
+    """
+    Controlador para cambiar el estado de asistencia de un profesor (Entrada/Salida).
+    Implementa la arquitectura híbrida: procesa mediante hardware real (lector RFID) 
+    si está disponible, o mediante un bypass manual en entorno local de desarrollo.
+    """
     profesor_id = int(request.form["profesor_id"])
     dia_actual = datetime.now().isoweekday()
     
+    # Integración de la capa física de hardware
     if lector_rfid is not None:
         try:
             print("Lector RFID activo. Esperando tarjeta...")
             id_tarjeta, texto = lector_rfid.read() 
             
-            if id_tarjeta: 
+            if id_tarjeta: # Si se detecta una tarjeta, se verifica que esté asociada al profesor
                 db.gestionar_fichaje_toggle(profesor_id, dia_actual)
                 flash("Identificación RFID correcta. Estado actualizado.", "success")
             else:

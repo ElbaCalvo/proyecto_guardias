@@ -4,6 +4,7 @@ from .models import Profesor, Ausencia, Presencia, Guardia
 DB_PATH = "ies.db"
 
 def get_connection():
+    """Establece la conexión con la base de datos"""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -11,6 +12,7 @@ def get_connection():
 # -------- PROFESORES --------
 
 def crear_profesor(nombre, departamento):
+    """Inserta un nuevo registro de docente en la tabla profesores."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -20,6 +22,7 @@ def crear_profesor(nombre, departamento):
         conn.commit()
 
 def obtener_profesores():
+    """Recupera todos los profesores y los mapea a objetos lógicos de la clase Profesor."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id_profesor, nombre, departamento FROM profesores")
@@ -83,6 +86,7 @@ def detectar_ausencias_automaticas(dia_semana, hora_lectiva):
 # -------- AUSENCIAS --------
 
 def registrar_ausencia(id_profesor, fecha, hora):
+    """Inserta manualmente un registro de ausencia para un profesor en una fecha y hora."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -92,6 +96,7 @@ def registrar_ausencia(id_profesor, fecha, hora):
         conn.commit()
 
 def obtener_ausencias():
+    """Recupera todas las ausencias almacenadas y las mapea a objetos lógicos Ausencia."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id_ausencia, id_profesor, fecha, hora FROM ausencias")
@@ -103,24 +108,25 @@ def obtener_ausencias():
         ]
 
 def obtener_ausencias_con_datos_profesor(dia_semana):
-    """Filtra para mostrar solo las horas de tipo 'clase' que necesitan guardia"""
+    """Obtiene las ausencias activas del día de hoy cruzando datos con el horario de clase."""
     with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT a.hora, h.aula, p.id_profesor, p.nombre
-            FROM ausencias a
-            JOIN profesores p ON a.id_profesor = p.id_profesor
-            JOIN horario h ON a.id_profesor = h.id_profesor 
-                           AND a.hora = h.hora 
-                           AND h.dia_semana = ?
-            WHERE a.fecha = date('now')
-              AND h.tipo = 'clase'
-        """, (dia_semana,))
-        return cursor.fetchall()
+     cursor = conn.cursor()
+    cursor.execute("""
+        SELECT a.hora, h.aula, p.id_profesor, p.nombre
+        FROM ausencias a
+        JOIN profesores p ON a.id_profesor = p.id_profesor
+        JOIN horario h ON a.id_profesor = h.id_profesor 
+                       AND a.hora = h.hora 
+                       AND h.dia_semana = ?
+        WHERE a.fecha = date('now')
+          AND h.tipo = 'clase'
+    """, (dia_semana,))
+    return cursor.fetchall()
 
 # -------- PRESENCIA --------
 
 def registrar_presencia(id_profesor, fecha, hora, presente):
+    """Registra de forma directa un estado de fichaje de presencia en la base de datos."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -130,14 +136,14 @@ def registrar_presencia(id_profesor, fecha, hora, presente):
         conn.commit()
 
 def limpiar_tablas_diarias():
-    """Borra presencia y ausencias que no sean de hoy al cargar presencia"""
+    """Mantiene la consistencia del sistema borrando los datos de presencia y ausencia de días anteriores."""
     with get_connection() as conn:
         conn.execute("DELETE FROM presencia WHERE fecha != date('now')")
         conn.execute("DELETE FROM ausencias WHERE fecha != date('now')")
         conn.commit()
 
 def obtener_estado_presencia_todos():
-    """Devuelve la lista de profesores con un 1 o 0 si están presentes hoy"""
+    """Devuelve la lista global de profesores junto a su estado de fichaje del día actual."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -149,7 +155,7 @@ def obtener_estado_presencia_todos():
         return cursor.fetchall()
 
 def gestionar_fichaje_toggle(profesor_id, dia_semana):
-    """Toda la lógica de 'si está presente lo borro y creo ausencia' metida aquí"""
+    """Intercambia el estado de asistencia diaria del profesor simulando la acción del hardware."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM presencia WHERE id_profesor = ? AND fecha = date('now')", (profesor_id,))
@@ -170,6 +176,7 @@ def gestionar_fichaje_toggle(profesor_id, dia_semana):
 # -------- GUARDIAS --------
 
 def obtener_guardias():
+    """Recupera la lista completa con los registros crudos de todas las guardias."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id_guardia, fecha, hora, id_profesor_ausente, id_profesor_cubre, aula FROM guardias")
@@ -178,7 +185,7 @@ def obtener_guardias():
         return filas
 
 def obtener_guardias_con_nombre_cubre():
-    """Necesaria para que en la tabla de guardias salga el NOMBRE del que cubre"""
+    """Recupera las guardias de hoy enlazando con la tabla profesores para extraer el nombre del sustituto."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -190,13 +197,13 @@ def obtener_guardias_con_nombre_cubre():
         return cursor.fetchall()
 
 def eliminar_guardia_por_hora_aula(hora, aula):
-    """Para la ruta @app.route('/eliminar')"""
+    """Elimina la asignación de una guardia activa basándose en su tramo horario y su aula."""
     with get_connection() as conn:
         conn.execute("DELETE FROM guardias WHERE hora = ? AND aula = ? AND fecha = date('now')", (hora, aula))
         conn.commit()
 
 def comprobar_guardia_existente(fecha, hora, aula):
-    """Mueve el SQL de comprobación aquí"""
+    """Comprueba si un aula concreta ya cuenta con una guardia asignada en el mismo tramo horario."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -206,7 +213,7 @@ def comprobar_guardia_existente(fecha, hora, aula):
         return cursor.fetchone() is not None
 
 def registrar_guardia(fecha, hora, id_ausente, id_cubre, aula):
-    """Registra la guardia y actualiza los contadores del profesor (Requisito PDF)"""
+    """Inserta la asignación de la guardia e incrementa el contador histórico del profesor que cubre."""
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -229,7 +236,7 @@ def registrar_guardia(fecha, hora, id_ausente, id_cubre, aula):
         return False
     
 def obtener_datos_para_ranking(dia_semana, hora):
-    """La consulta completa para los 3 criterios del PDF"""
+    """Extrae las estadísticas de los profesores disponibles para que el motor calcule las prioridades."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
